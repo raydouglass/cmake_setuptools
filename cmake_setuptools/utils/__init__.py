@@ -34,7 +34,7 @@ def convert_to_manylinux(name, version):
         print('Wheel not found: {}'.format(dist_zip_path))
         return
 
-    unzip_dir = 'dist/unzip'
+    unzip_dir = 'dist/unzip/{}'.format(dist_zip)
     os.makedirs(unzip_dir, exist_ok=True)
     with zipfile.ZipFile(dist_zip_path, 'r') as zip_ref:
         zip_ref.extractall(unzip_dir)
