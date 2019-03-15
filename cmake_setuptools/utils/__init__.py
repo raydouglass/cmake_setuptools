@@ -5,6 +5,9 @@ import shutil
 import zipfile
 from hashlib import sha256
 from base64 import urlsafe_b64encode
+import re
+
+from wheel.wheelfile import WheelFile
 
 
 def distutils_dir_name(dname):
@@ -94,4 +97,62 @@ def convert_to_manylinux(name, version):
     os.remove(dist_zip_path)
 
 
-__all__ = ['distutils_dir_name', 'convert_to_manylinux']
+def rename_package_wheel(wheel_file, new_package_name='', new_version=''):
+    from os.path import join
+    if not new_package_name and not new_version:
+        raise Exception('Must specify either new_package_name or new_version')
+    wheel_filename = os.path.basename(wheel_file)
+
+    with WheelFile(wheel_file) as wf:
+        old_name = wf.parsed_filename.group('name')
+        old_version = wf.parsed_filename.group('ver')
+        old_name_ver = wf.parsed_filename.group('namever')
+        name = new_package_name if new_package_name else old_name
+        version = new_version if new_version else old_version
+        name_ver = '{}-{}'.format(name, version)
+        extracted_dir = name_ver
+        if os.path.exists(extracted_dir):
+            shutil.rmtree(extracted_dir, ignore_errors=True)
+        wf.extractall(extracted_dir)
+
+    shutil.move(join(extracted_dir, '{}.dist-info'.format(old_name_ver)),
+                join(extracted_dir, '{}.dist-info'.format(name_ver)))
+    if os.path.exists(join(extracted_dir, '{}.data'.format(old_name_ver))):
+        shutil.move(join(extracted_dir, '{}.data'.format(old_name_ver)),
+                    join(extracted_dir, '{}.data'.format(name_ver)))
+    metadata_file = join(extracted_dir, '{}.dist-info'.format(name_ver),
+                         'METADATA')
+    with open(metadata_file, 'r', encoding='utf8') as f:
+        metadata_text = f.read()
+    metadata_text = re.sub(r'^Name: .+',
+                           'Name: {}'.format(new_package_name),
+                           metadata_text, flags=re.MULTILINE)
+    metadata_text = re.sub(r'^Version: .+',
+                           'Version: {}'.format(version),
+                           metadata_text, flags=re.MULTILINE)
+    with open(metadata_file, 'w', encoding='utf-8') as f:
+        f.write(metadata_text)
+
+    wheel_filename = wheel_filename.replace(old_name_ver, name_ver)
+    with WheelFile(wheel_filename, 'w') as wf:
+        wf.write_files(extracted_dir)
+    shutil.rmtree(extracted_dir, ignore_errors=True)
+    return wheel_filename
+
+
+def rename_package_wheel_main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('wheel_file',
+                        help='The existing wheel to copy and modify')
+    parser.add_argument('--name', '-n',
+                        help='The new name for the wheel package', default=None)
+    parser.add_argument('--version', '-v',
+                        help='The new version for the wheel package',
+                        default=None)
+    ns = parser.parse_args()
+    wheel_filename = rename_package_wheel(ns.wheel_file, ns.name, ns.version)
+    print('Created {}'.format(wheel_filename))
+
+
+__all__ = ['distutils_dir_name', 'convert_to_manylinux', 'rename_package_wheel']
