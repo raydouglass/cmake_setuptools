@@ -2,6 +2,7 @@ import os
 import subprocess
 import shutil
 import sys
+from shlex import split
 from setuptools import Extension
 from setuptools.command.build_ext import build_ext
 
@@ -45,7 +46,7 @@ class CMakeBuildExt(build_ext):
                           '-DCMAKE_BUILD_TYPE=' + build_type]
             cmake_args.extend(
                 [x for x in
-                 os.environ.get('CMAKE_COMMON_VARIABLES', '').split(' ')
+                 split(os.environ.get('CMAKE_COMMON_VARIABLES', ''))
                  if x])
 
             env = os.environ.copy()
@@ -54,7 +55,7 @@ class CMakeBuildExt(build_ext):
             subprocess.check_call(cmake_args,
                                   cwd=self.build_temp,
                                   env=env)
-            subprocess.check_call(['make', '-j', ext.name],
+            subprocess.check_call([CMAKE_EXE, '--build', '.', '-j'],
                                   cwd=self.build_temp,
                                   env=env)
             print()
