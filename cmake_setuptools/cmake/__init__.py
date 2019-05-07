@@ -55,7 +55,10 @@ class CMakeBuildExt(build_ext):
             subprocess.check_call(cmake_args,
                                   cwd=self.build_temp,
                                   env=env)
-            subprocess.check_call([CMAKE_EXE, '--build', '.', '-j'],
+            subprocess.check_call([CMAKE_EXE,
+                                   '--build', '.',
+                                   '-j',
+                                   '--target', ext.name],
                                   cwd=self.build_temp,
                                   env=env)
             print()
