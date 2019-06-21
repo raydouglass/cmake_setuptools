@@ -1,11 +1,14 @@
+from __future__ import division, print_function
+
 import os
 import subprocess
-import shutil
 import sys
+
 from setuptools import Extension
 from setuptools.command.build_ext import build_ext
+from shutilwhich import which
 
-CMAKE_EXE = os.environ.get('CMAKE_EXE', shutil.which('cmake'))
+CMAKE_EXE = os.environ.get('CMAKE_EXE', which('cmake'))
 
 
 def check_for_cmake():
@@ -22,6 +25,7 @@ class CMakeExtension(Extension):
 
     def __init__(self, name, sourcedir=''):
         check_for_cmake()
+        # not using super() for Python 2 compatibility
         Extension.__init__(self, name, sources=[])
         self.sourcedir = os.path.abspath(sourcedir)
 
@@ -59,7 +63,8 @@ class CMakeBuildExt(build_ext):
                                   env=env)
             print()
         else:
-            super().build_extension(ext)
+            # not using super() for Python 2 compatibility
+            build_ext.build_extension(self, ext)
 
 
 __all__ = ['CMakeBuildExt', 'CMakeExtension']
